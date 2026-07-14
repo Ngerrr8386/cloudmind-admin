@@ -5,12 +5,8 @@ import {
   Clock,
   Trash2,
   Flag,
-  SlidersHorizontal,
   ShieldCheck,
-  Eye,
   Check,
-  ChevronLeft,
-  ChevronRight,
   Search,
   AlertTriangle,
   Loader2,
@@ -135,9 +131,6 @@ function QueueCard({
             <Trash2 className="h-4 w-4" />
             Gỡ
           </Button>
-          <Button variant="ghost" size="icon" aria-label="Xem chi tiết">
-            <Eye className="h-4 w-4" />
-          </Button>
         </div>
       </GlassCard>
     </motion.div>
@@ -159,6 +152,8 @@ export function ContentPage() {
     () => contentItems.filter((i) => i.status === 'flagged' || i.status === 'reviewing'),
     [contentItems],
   );
+
+  const totalFiles = (data?.meta?.total as number | undefined) ?? contentItems.length;
 
   const stats = useMemo(() => {
     const pending = contentItems.filter((i) => i.status === 'flagged' || i.status === 'reviewing').length;
@@ -203,12 +198,6 @@ export function ContentPage() {
       <PageHeader
         title="Nội dung & Kiểm duyệt"
         subtitle="Quản lý & kiểm duyệt file toàn hệ thống"
-        actions={
-          <Button variant="secondary" size="md">
-            <SlidersHorizontal className="h-4 w-4" />
-            Cấu hình bộ lọc
-          </Button>
-        }
       />
 
       {/* Stat cards */}
@@ -219,7 +208,7 @@ export function ContentPage() {
         className="grid grid-cols-2 gap-4 lg:grid-cols-4"
       >
         <motion.div variants={fadeUp}>
-          <StatCard icon={FileWarning} label="Tổng file" value="8.4M" tone="amber" trend={6.4} />
+          <StatCard icon={FileWarning} label="Tổng file" value={formatNumber(totalFiles)} tone="amber" />
         </motion.div>
         <motion.div variants={fadeUp}>
           <StatCard
@@ -418,9 +407,6 @@ export function ContentPage() {
                     <td className="px-5 py-4 text-slate-500">{timeAgo(item.uploadedAt)}</td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1.5">
-                        <Button variant="ghost" size="icon" aria-label="Xem chi tiết">
-                          <Eye className="h-4 w-4" />
-                        </Button>
                         <Button
                           variant="ghost"
                           size="icon"
@@ -447,22 +433,11 @@ export function ContentPage() {
             </tbody>
           </table>
 
-          {/* Fake pagination footer */}
           <div className="flex flex-col items-center justify-between gap-3 border-t border-slate-200 px-5 py-3.5 text-xs text-slate-500 sm:flex-row">
             <span>
               Hiển thị <span className="font-semibold text-slate-700">1–{formatNumber(filtered.length)}</span> / tổng{' '}
               <span className="font-semibold text-slate-700">{formatNumber(contentItems.length)}</span> mục
             </span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <ChevronLeft className="h-4 w-4" />
-                Trước
-              </Button>
-              <Button variant="outline" size="sm">
-                Sau
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </div>
       </motion.section>

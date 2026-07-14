@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import {
   LayoutDashboard, Users, ShieldAlert, CreditCard, Package,
-  BrainCircuit, ScrollText, Settings, LifeBuoy, LogOut, type LucideIcon,
+  BrainCircuit, ScrollText, Settings, LogOut, Building2, type LucideIcon,
 } from 'lucide-react'
 import { Logo, Avatar } from '@/components/ui'
 import { useAuth } from '@/lib/auth'
@@ -19,6 +19,7 @@ const groups: { title: string; items: NavItem[] }[] = [
     title: 'Quản lý',
     items: [
       { to: '/users', label: 'Người dùng', icon: Users },
+      { to: '/workspaces', label: 'Không gian nhóm', icon: Building2 },
       { to: '/content', label: 'Nội dung & Kiểm duyệt', icon: ShieldAlert },
       { to: '/plans', label: 'Gói cước', icon: Package },
     ],
@@ -85,12 +86,8 @@ export function AdminSidebar({ onNavigate }: { onNavigate?: () => void }) {
         ))}
       </nav>
 
-      {/* Support + admin profile */}
+      {/* Admin profile */}
       <div className="border-t border-slate-200 p-3">
-        <a href="#" className="mb-2 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900">
-          <LifeBuoy className="h-[18px] w-[18px]" />
-          Trợ giúp & Tài liệu
-        </a>
         <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-2.5">
           <Avatar initials={user?.initials ?? 'A'} tone={user?.tone ?? 'indigo'} size="sm" />
           <div className="min-w-0 flex-1">

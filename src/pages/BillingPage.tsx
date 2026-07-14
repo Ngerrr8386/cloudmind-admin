@@ -1,7 +1,6 @@
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Download,
   RotateCcw,
   TrendingUp,
   Wallet,
@@ -10,8 +9,6 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  MoreHorizontal,
-  Eye,
   Receipt,
   CreditCard,
 } from 'lucide-react';
@@ -95,8 +92,11 @@ function ChartTooltipStyle() {
   } as const;
 }
 
+const PAGE_SIZE = 20;
+
 export function BillingPage() {
   const [filter, setFilter] = useState<TxFilter>('all');
+  const [page, setPage] = useState(1);
 
   const { data: metrics } = useAsync(() => api.billingMetrics(), []);
   const { data: kpiData } = useAsync(() => api.kpis(), []);
@@ -107,8 +107,13 @@ export function BillingPage() {
     loading: txLoading,
     reload: reloadTx,
   } = useAsync(
-    () => api.transactions({ status: filter === 'all' ? undefined : filter }),
-    [filter],
+    () =>
+      api.transactions({
+        status: filter === 'all' ? undefined : filter,
+        page,
+        limit: PAGE_SIZE,
+      }),
+    [filter, page],
   );
 
   const revenueMonthly = useMemo(
@@ -127,6 +132,15 @@ export function BillingPage() {
   );
 
   const totalTransactions = txData?.meta?.total ?? filteredTransactions.length;
+  const totalPages = Math.max(1, Math.ceil(totalTransactions / PAGE_SIZE));
+  const rangeStart =
+    filteredTransactions.length === 0 ? 0 : (page - 1) * PAGE_SIZE + 1;
+  const rangeEnd = (page - 1) * PAGE_SIZE + filteredTransactions.length;
+
+  function changeFilter(next: TxFilter) {
+    setFilter(next);
+    setPage(1);
+  }
 
   const planRevenueData = useMemo<
     { name: string; mrr: number; hex: string }[]
@@ -163,18 +177,6 @@ export function BillingPage() {
       <PageHeader
         title="Doanh thu & Thanh toán"
         subtitle="Theo dõi MRR, giao dịch và hoàn tiền"
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="glass" size="md">
-              <Download className="h-4 w-4" />
-              Xuất hóa đơn
-            </Button>
-            <Button variant="primary" size="md">
-              <RotateCcw className="h-4 w-4" />
-              Tạo hoàn tiền
-            </Button>
-          </div>
-        }
       />
 
       {/* KPI StatCards */}
@@ -411,7 +413,7 @@ export function BillingPage() {
               variant="danger"
               size="md"
               className="shrink-0"
-              onClick={() => setFilter('failed')}
+              onClick={() => changeFilter('failed')}
             >
               <CreditCard className="h-4 w-4" />
               Xử lý ngay
@@ -451,7 +453,7 @@ export function BillingPage() {
                 <button
                   key={f.key}
                   type="button"
-                  onClick={() => setFilter(f.key)}
+                  onClick={() => changeFilter(f.key)}
                   className={cn(
                     'rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors',
                     isActive
@@ -477,7 +479,7 @@ export function BillingPage() {
               title="Không có giao dịch"
               description="Không tìm thấy giao dịch nào khớp với bộ lọc hiện tại."
               action={
-                <Button variant="secondary" size="sm" onClick={() => setFilter('all')}>
+                <Button variant="secondary" size="sm" onClick={() => changeFilter('all')}>
                   Xóa bộ lọc
                 </Button>
               }
@@ -540,10 +542,7 @@ export function BillingPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" aria-label="Xem chi tiết">
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {t.status === 'paid' && (
+                        {t.status === 'paid' ? (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -552,10 +551,9 @@ export function BillingPage() {
                           >
                             <RotateCcw className="h-4 w-4" />
                           </Button>
+                        ) : (
+                          <span className="text-xs text-slate-300">—</span>
                         )}
-                        <Button variant="ghost" size="icon" aria-label="Thêm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
                       </div>
                     </td>
                   </tr>
@@ -566,15 +564,28 @@ export function BillingPage() {
                   <td colSpan={8} className="px-5 py-3.5">
                     <div className="flex flex-col items-center justify-between gap-3 sm:flex-row">
                       <p className="text-xs text-slate-400">
-                        Hiển thị 1–{formatNumber(filteredTransactions.length)} /
-                        tổng {formatNumber(totalTransactions)} giao dịch
+                        Hiển thị {formatNumber(rangeStart)}–
+                        {formatNumber(rangeEnd)} / tổng{' '}
+                        {formatNumber(totalTransactions)} giao dịch
                       </p>
                       <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" disabled>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page <= 1}
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        >
                           <ChevronLeft className="h-4 w-4" />
                           Trước
                         </Button>
-                        <Button variant="outline" size="sm">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={page >= totalPages}
+                          onClick={() =>
+                            setPage((p) => Math.min(totalPages, p + 1))
+                          }
+                        >
                           Sau
                           <ChevronRight className="h-4 w-4" />
                         </Button>

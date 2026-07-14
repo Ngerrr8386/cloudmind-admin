@@ -210,7 +210,6 @@ function GeneralTab({ general }: { general: AdminSettings['general'] }) {
   const [supportEmail, setSupportEmail] = useState(general.supportEmail);
   const [language, setLanguage] = useState(general.language);
   const [maintenance, setMaintenance] = useState(general.maintenance);
-  const [allowSignup, setAllowSignup] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const save = async () => {
@@ -331,14 +330,6 @@ function GeneralTab({ general }: { general: AdminSettings['general'] }) {
               </motion.div>
             )}
           </AnimatePresence>
-          <ToggleRow
-            title="Cho phép đăng ký mới"
-            description="Bật để người dùng mới có thể tạo tài khoản."
-            checked={allowSignup}
-            onChange={setAllowSignup}
-            toneKey="emerald"
-            icon={Users}
-          />
         </div>
       </SectionCard>
     </div>

@@ -7,8 +7,6 @@ import {
   Clock,
   ShieldOff,
   Search,
-  Filter,
-  Download,
   UserPlus,
   MoreVertical,
   ChevronLeft,
@@ -125,7 +123,7 @@ export function UsersPage() {
     newUsers30d: kpiData?.newUsers30d ?? 0,
   };
 
-  const { data: usersData, loading } = useAsync(
+  const { data: usersData, loading, reload } = useAsync(
     () =>
       api.users({
         page,
@@ -136,6 +134,25 @@ export function UsersPage() {
       }),
     [page, query, planFilter, statusFilter],
   );
+
+  const [creating, setCreating] = useState(false);
+
+  const handleCreateUser = async () => {
+    if (creating) return;
+    const email = window.prompt('Email người dùng mới:');
+    if (!email || !email.trim()) return;
+    const name = window.prompt('Tên hiển thị (tùy chọn):') ?? '';
+    setCreating(true);
+    try {
+      await api.createUser({ email: email.trim(), name: name.trim() || undefined });
+      setPage(1);
+      reload();
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : 'Không tạo được người dùng');
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const filteredUsers = useMemo<ManagedUser[]>(
     () => (usersData?.items ?? []).map(mapUser),
@@ -173,11 +190,7 @@ export function UsersPage() {
         subtitle={`${formatNumber(kpis.totalUsers)} người dùng · ${formatNumber(kpis.newUsers30d)} mới (30 ngày)`}
         actions={
           <div className="flex items-center gap-2">
-            <Button variant="glass" size="md">
-              <Download className="h-4 w-4" />
-              Xuất CSV
-            </Button>
-            <Button variant="primary" size="md">
+            <Button variant="primary" size="md" disabled={creating} onClick={handleCreateUser}>
               <UserPlus className="h-4 w-4" />
               Thêm người dùng
             </Button>
@@ -293,11 +306,6 @@ export function UsersPage() {
               </select>
               <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             </div>
-
-            <Button variant="outline" size="md">
-              <Filter className="h-4 w-4" />
-              Lọc
-            </Button>
           </div>
         </div>
       </motion.div>
@@ -339,7 +347,6 @@ export function UsersPage() {
                   <th className="px-5 py-3.5">Gói</th>
                   <th className="px-5 py-3.5">Trạng thái</th>
                   <th className="px-5 py-3.5">Dung lượng</th>
-                  <th className="px-5 py-3.5">Lượt AI</th>
                   <th className="px-5 py-3.5">Tham gia</th>
                   <th className="px-5 py-3.5">Hoạt động</th>
                   <th className="px-5 py-3.5" />
@@ -373,11 +380,6 @@ export function UsersPage() {
                     </td>
                     <td className="px-5 py-4">
                       <StorageCell user={u} />
-                    </td>
-                    <td className="px-5 py-4">
-                      <span className="font-medium text-slate-700">
-                        {formatNumber(u.aiCalls)}
-                      </span>
                     </td>
                     <td className="px-5 py-4 text-slate-500">
                       {u.joinedAt ? new Date(u.joinedAt).toLocaleDateString('vi-VN') : '—'}

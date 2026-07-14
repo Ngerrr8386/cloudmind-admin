@@ -1,12 +1,8 @@
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Brain,
   Coins,
   Gauge,
-  Target,
-  Calendar,
-  ChevronDown,
   TrendingUp,
   Search,
   Sparkles,
@@ -27,7 +23,7 @@ import {
   CartesianGrid,
   Cell,
 } from 'recharts';
-import { Badge, GlassCard, AIChip, ConfidenceMeter } from '@/components/ui';
+import { Badge, GlassCard, AIChip } from '@/components/ui';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { tone, TONES, TONE_ORDER, type Tone } from '@/lib/theme';
@@ -35,8 +31,6 @@ import { cn, formatNumber } from '@/lib/utils';
 import { staggerContainer, fadeUp, fadeUpLg } from '@/lib/motion';
 import { api } from '@/lib/api';
 import { useAsync } from '@/lib/useApi';
-
-type DateRange = '7 ngày' | '30 ngày' | '90 ngày';
 
 interface FeatureBreakdown {
   feature: string;
@@ -54,59 +48,6 @@ function chartTooltip() {
     color: '#0f172a',
     boxShadow: '0 8px 24px -12px rgba(16,24,40,0.2)',
   } as const;
-}
-
-function DateRangePill({
-  value,
-  onChange,
-}: {
-  value: DateRange;
-  onChange: (v: DateRange) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ranges: DateRange[] = ['7 ngày', '30 ngày', '90 ngày'];
-  return (
-    <div className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:bg-slate-50"
-      >
-        <Calendar className="h-4 w-4 text-slate-400" />
-        <span>{value}</span>
-        <ChevronDown
-          className={cn('h-4 w-4 text-slate-400 transition-transform', open && 'rotate-180')}
-        />
-      </button>
-      {open && (
-        <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="absolute right-0 z-20 mt-2 w-40 overflow-hidden rounded-2xl border border-slate-200 bg-white p-1.5 shadow-card"
-        >
-          {ranges.map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => {
-                onChange(r);
-                setOpen(false);
-              }}
-              className={cn(
-                'flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm transition-colors',
-                r === value
-                  ? 'bg-indigo-50 font-semibold text-indigo-600'
-                  : 'text-slate-600 hover:bg-slate-50',
-              )}
-            >
-              {r}
-              {r === value && <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />}
-            </button>
-          ))}
-        </motion.div>
-      )}
-    </div>
-  );
 }
 
 function FeatureCard({
@@ -182,8 +123,6 @@ function Spinner() {
 }
 
 export function AIAnalyticsPage() {
-  const [range, setRange] = useState<DateRange>('7 ngày');
-
   const { data: metrics } = useAsync(() => api.aiMetrics() as Promise<AiMetrics>, []);
   const { data: byFeature, loading: loadingFeature } = useAsync(
     () => api.aiByFeature() as Promise<AiByFeature[]>,
@@ -234,7 +173,6 @@ export function AIAnalyticsPage() {
         eyebrow={<Badge tone="ai">AI</Badge>}
         title="Phân tích AI"
         subtitle="Mức sử dụng, chi phí và hiệu năng của các tính năng AI"
-        actions={<DateRangePill value={range} onChange={setRange} />}
       />
 
       {/* Stat cards */}
@@ -268,9 +206,6 @@ export function AIAnalyticsPage() {
             value={metrics ? Math.round(metrics.avgLatencyMs) + 'ms' : '—'}
             tone="blue"
           />
-        </motion.div>
-        <motion.div variants={fadeUp}>
-          <StatCard icon={Target} label="Độ chính xác" value="98.7%" tone="emerald" />
         </motion.div>
       </motion.div>
 
@@ -516,13 +451,6 @@ export function AIAnalyticsPage() {
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl bg-slate-50 p-4">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-slate-600">Độ tin cậy mô hình</span>
-                <span className="text-sm font-bold text-slate-900">98.7%</span>
-              </div>
-              <ConfidenceMeter value={98.7} />
-            </div>
           </GlassCard>
         </motion.div>
       </div>

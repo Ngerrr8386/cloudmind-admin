@@ -173,9 +173,22 @@ function toEntry(item: any): AuditEntry {
   };
 }
 
+const PAGE_SIZE = 50;
+
 export function AuditLogPage() {
   const [filter, setFilter] = useState<SeverityFilter>('all');
   const [query, setQuery] = useState('');
+  const [limit, setLimit] = useState(PAGE_SIZE);
+
+  // Đổi bộ lọc / từ khoá → quay về trang đầu.
+  function changeFilter(next: SeverityFilter) {
+    setFilter(next);
+    setLimit(PAGE_SIZE);
+  }
+  function changeQuery(next: string) {
+    setQuery(next);
+    setLimit(PAGE_SIZE);
+  }
 
   const { data, loading } = useAsync(
     () =>
@@ -183,15 +196,19 @@ export function AuditLogPage() {
         severity: filter === 'all' ? undefined : filter,
         q: query || undefined,
         page: 1,
-        limit: 50,
+        limit,
       }),
-    [filter, query],
+    [filter, query, limit],
   );
 
   const filtered = useMemo<AuditEntry[]>(
     () => (data?.items ?? []).map(toEntry),
     [data],
   );
+
+  const totalEntries = (data?.meta?.total as number | undefined) ?? filtered.length;
+  // Còn dữ liệu để tải thêm khi đã nhận đủ 1 trang và tổng vẫn lớn hơn số đang hiển thị.
+  const hasMore = filtered.length >= limit && filtered.length < totalEntries;
 
   const warningCount = useMemo(
     () => filtered.filter((e) => e.severity === 'warning').length,
@@ -238,7 +255,7 @@ export function AuditLogPage() {
         subtitle="Mọi thao tác quản trị & sự kiện hệ thống đều được ghi lại"
         actions={
           <div className="flex items-center gap-3">
-            <SearchField value={query} onChange={setQuery} />
+            <SearchField value={query} onChange={changeQuery} />
             <Button variant="glass" size="md" onClick={handleExport}>
               <Download className="h-4 w-4" />
               Xuất nhật ký
@@ -258,7 +275,7 @@ export function AuditLogPage() {
           <StatCard
             icon={Activity}
             label="Tổng sự kiện"
-            value={formatNumber((data?.meta?.total as number | undefined) ?? filtered.length)}
+            value={formatNumber(totalEntries)}
             tone="indigo"
           />
         </motion.div>
@@ -288,7 +305,7 @@ export function AuditLogPage() {
             <button
               key={f.key}
               type="button"
-              onClick={() => setFilter(f.key)}
+              onClick={() => changeFilter(f.key)}
               className={cn(
                 'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
                 isActive
@@ -341,7 +358,7 @@ export function AuditLogPage() {
             title="Không có sự kiện nào"
             description="Không tìm thấy mục nhật ký nào khớp với bộ lọc hiện tại."
             action={
-              <Button variant="secondary" size="sm" onClick={() => setFilter('all')}>
+              <Button variant="secondary" size="sm" onClick={() => changeFilter('all')}>
                 Xóa bộ lọc
               </Button>
             }
@@ -363,9 +380,14 @@ export function AuditLogPage() {
           </motion.ul>
         )}
 
-        {filtered.length > 0 && (
+        {filtered.length > 0 && hasMore && (
           <div className="mt-2 flex justify-center border-t border-slate-100 pt-6">
-            <Button variant="secondary" size="md">
+            <Button
+              variant="secondary"
+              size="md"
+              disabled={loading}
+              onClick={() => setLimit((l) => l + PAGE_SIZE)}
+            >
               <ChevronDown className="h-4 w-4" />
               Tải thêm
             </Button>

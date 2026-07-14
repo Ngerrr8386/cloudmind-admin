@@ -1,16 +1,14 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
   Check,
   Pencil,
   Users,
+  Trash2,
   TrendingUp,
   Wallet,
   PieChart as PieChartIcon,
-  ArrowRight,
-  ChevronLeft,
-  ChevronRight,
   Sparkles,
   Loader2,
 } from 'lucide-react';
@@ -25,7 +23,16 @@ import {
   Cell,
   LabelList,
 } from 'recharts';
-import { Button, Badge, GlassCard, Toggle, ProgressBar } from '@/components/ui';
+import {
+  Button,
+  Badge,
+  GlassCard,
+  Toggle,
+  ProgressBar,
+  Modal,
+  Input,
+  Avatar,
+} from '@/components/ui';
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { tone, TONES, type Tone } from '@/lib/theme';
@@ -33,7 +40,7 @@ import { cn, formatNumber } from '@/lib/utils';
 import { staggerContainer, fadeUp, fadeUpLg } from '@/lib/motion';
 import { api } from '@/lib/api';
 import { useAsync } from '@/lib/useApi';
-import { toneOf } from '@/lib/adminMap';
+import { initialsOf, toneOf } from '@/lib/adminMap';
 import type { AdminPlan } from '@/lib/types';
 
 interface ApiPlan {
@@ -42,6 +49,8 @@ interface ApiPlan {
   name: string;
   priceMonthly: number;
   storageBytes: number;
+  pricingModel?: string;
+  includedSeats?: number;
   features: string[];
   active: boolean;
   subscribers: number;
@@ -81,16 +90,30 @@ interface PlanCardProps {
   totalSubscribers: number;
   totalUsers: number;
   onToggle: () => void;
+  onEdit: () => void;
+  onViewSubscribers: () => void;
 }
 
 function formatTy(value: number): string {
   return (value / 1e9).toFixed(2) + ' tỷ đ';
 }
 
-function PlanCard({ plan, totalSubscribers, totalUsers, onToggle }: PlanCardProps) {
+function PlanCard({
+  plan,
+  totalSubscribers,
+  totalUsers,
+  onToggle,
+  onEdit,
+  onViewSubscribers,
+}: PlanCardProps) {
   const [enabled, setEnabled] = useState<boolean>(plan.active);
   const [toggling, setToggling] = useState(false);
   const isPro = plan.name === 'Pro';
+
+  // Đồng bộ state cục bộ với plan.active mỗi khi dữ liệu reload.
+  useEffect(() => {
+    setEnabled(plan.active);
+  }, [plan.active]);
 
   async function handleToggle(next: boolean) {
     if (toggling) return;
@@ -220,11 +243,17 @@ function PlanCard({ plan, totalSubscribers, totalUsers, onToggle }: PlanCardProp
             variant={isPro ? 'primary' : 'outline'}
             size="sm"
             className="flex-1"
+            onClick={onEdit}
           >
             <Pencil className="mr-1.5 h-3.5 w-3.5" />
             Chỉnh sửa
           </Button>
-          <Button variant="ghost" size="sm" className="flex-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="flex-1"
+            onClick={onViewSubscribers}
+          >
             <Users className="mr-1.5 h-3.5 w-3.5" />
             Xem người đăng ký
           </Button>
@@ -234,13 +263,123 @@ function PlanCard({ plan, totalSubscribers, totalUsers, onToggle }: PlanCardProp
   );
 }
 
+interface PlanFormState {
+  id: string | null;
+  name: string;
+  priceMonthly: string;
+  storageGiB: string;
+  pricingModel: string;
+  includedSeats: string;
+  features: string;
+  active: boolean;
+}
+
+const EMPTY_FORM: PlanFormState = {
+  id: null,
+  name: '',
+  priceMonthly: '',
+  storageGiB: '',
+  pricingModel: 'flat',
+  includedSeats: '1',
+  features: '',
+  active: true,
+};
+
 export function PlansPage() {
   const { data: rawPlans, loading, reload } = useAsync(() => api.plans(), []);
   const { data: kpis } = useAsync(() => api.kpis(), []);
 
-  const adminPlans: AdminPlan[] = ((rawPlans as ApiPlan[] | null) ?? []).map(
-    toAdminPlan,
-  );
+  const rawApiPlans = (rawPlans as ApiPlan[] | null) ?? [];
+  const adminPlans: AdminPlan[] = rawApiPlans.map(toAdminPlan);
+
+  // --- Modal tạo/sửa gói ---
+  const [formOpen, setFormOpen] = useState(false);
+  const [form, setForm] = useState<PlanFormState>(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  function openCreate() {
+    setForm(EMPTY_FORM);
+    setFormError(null);
+    setFormOpen(true);
+  }
+
+  function openEdit(p: ApiPlan) {
+    setForm({
+      id: p.id,
+      name: p.name,
+      priceMonthly: String(p.priceMonthly ?? 0),
+      storageGiB: String(Math.round((p.storageBytes ?? 0) / GiB)),
+      pricingModel: p.pricingModel ?? 'flat',
+      includedSeats: String(p.includedSeats ?? 1),
+      features: (p.features ?? []).join('\n'),
+      active: p.active,
+    });
+    setFormError(null);
+    setFormOpen(true);
+  }
+
+  async function handleSavePlan() {
+    if (saving) return;
+    const name = form.name.trim();
+    if (!name) {
+      setFormError('Vui lòng nhập tên gói.');
+      return;
+    }
+    const payload = {
+      name,
+      priceMonthly: Number(form.priceMonthly) || 0,
+      storageBytes: Math.round((Number(form.storageGiB) || 0) * GiB),
+      features: form.features
+        .split('\n')
+        .map((f) => f.trim())
+        .filter(Boolean),
+      active: form.active,
+      // Chỉ gửi số ghế kèm theo cho gói tính-theo-ghế (Team).
+      ...(form.pricingModel === 'per_seat'
+        ? { includedSeats: Math.max(1, Number(form.includedSeats) || 1) }
+        : {}),
+    };
+    setSaving(true);
+    setFormError(null);
+    try {
+      if (form.id) {
+        await api.updatePlan(form.id, payload);
+      } else {
+        await api.createPlan(payload);
+      }
+      setFormOpen(false);
+      reload();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Không thể lưu gói.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleDeletePlan() {
+    if (saving || !form.id) return;
+    setSaving(true);
+    setFormError(null);
+    try {
+      await api.deletePlan(form.id);
+      setFormOpen(false);
+      reload();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : 'Không thể xoá gói.');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // --- Modal danh sách người đăng ký ---
+  const [subsOpen, setSubsOpen] = useState(false);
+  const [subsPlan, setSubsPlan] = useState<ApiPlan | null>(null);
+
+  function openSubscribers(p: ApiPlan) {
+    setSubsPlan(p);
+    setSubsOpen(true);
+  }
   const totalUsers = (kpis as { totalUsers?: number } | null)?.totalUsers ?? 0;
 
   const totalSubscribers = adminPlans.reduce(
@@ -274,7 +413,7 @@ export function PlansPage() {
         title="Gói cước"
         subtitle="Quản lý các gói & theo dõi hiệu suất"
         actions={
-          <Button variant="primary" size="md">
+          <Button variant="primary" size="md" onClick={openCreate}>
             <Plus className="mr-1.5 h-4 w-4" />
             Tạo gói mới
           </Button>
@@ -335,13 +474,15 @@ export function PlansPage() {
           animate="show"
           className="grid grid-cols-1 gap-6 lg:grid-cols-3"
         >
-          {adminPlans.map((plan: AdminPlan) => (
+          {adminPlans.map((plan: AdminPlan, i: number) => (
             <PlanCard
               key={plan.id}
               plan={plan}
               totalSubscribers={totalSubscribers}
               totalUsers={totalUsers}
               onToggle={reload}
+              onEdit={() => openEdit(rawApiPlans[i])}
+              onViewSubscribers={() => openSubscribers(rawApiPlans[i])}
             />
           ))}
         </motion.div>
@@ -457,11 +598,6 @@ export function PlansPage() {
                 <span className="text-sm font-semibold text-slate-900">{totalPlans}</span>
               </div>
             </div>
-
-            <Button variant="ghost" size="sm" className="mt-auto w-full justify-center">
-              Xem báo cáo chi tiết
-              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
-            </Button>
           </GlassCard>
         </motion.div>
       </motion.div>
@@ -553,19 +689,244 @@ export function PlansPage() {
             <span>
               Hiển thị 1–{adminPlans.length} / tổng {adminPlans.length} gói
             </span>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" disabled>
-                <ChevronLeft className="h-3.5 w-3.5" />
-                Trước
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Modal tạo / sửa gói */}
+      <Modal
+        open={formOpen}
+        onClose={() => !saving && setFormOpen(false)}
+        title={form.id ? 'Chỉnh sửa gói' : 'Tạo gói mới'}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Tên gói
+            </label>
+            <Input
+              value={form.name}
+              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+              placeholder="VD: Pro"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Giá / tháng (đ)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={form.priceMonthly}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, priceMonthly: e.target.value }))
+                }
+                placeholder="0"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Dung lượng (GB)
+              </label>
+              <Input
+                type="number"
+                min={0}
+                value={form.storageGiB}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, storageGiB: e.target.value }))
+                }
+                placeholder="0"
+              />
+            </div>
+          </div>
+          {form.pricingModel === 'per_seat' && (
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700">
+                Số ghế kèm theo gói
+              </label>
+              <Input
+                type="number"
+                min={1}
+                value={form.includedSeats}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, includedSeats: e.target.value }))
+                }
+                placeholder="1"
+              />
+              <p className="mt-1.5 text-xs text-slate-500">
+                Gói tính theo ghế: khách mua sẽ có sẵn số ghế này (giá đã gồm), cũng là số ghế tối thiểu.
+              </p>
+            </div>
+          )}
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">
+              Tính năng (mỗi dòng một mục)
+            </label>
+            <textarea
+              value={form.features}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, features: e.target.value }))
+              }
+              rows={4}
+              placeholder={'Lưu trữ không giới hạn\nHỗ trợ ưu tiên'}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 ring-focus transition-colors focus:border-ink-400"
+            />
+          </div>
+          <div className="flex items-center justify-between rounded-2xl bg-slate-50 px-4 py-3">
+            <span className="text-sm font-medium text-slate-700">
+              {form.active ? 'Đang bật' : 'Đã tắt'}
+            </span>
+            <Toggle
+              checked={form.active}
+              onChange={(v) => setForm((f) => ({ ...f, active: v }))}
+            />
+          </div>
+
+          {formError && (
+            <p className="text-sm font-medium text-rose-600">{formError}</p>
+          )}
+
+          <div className="flex items-center gap-2 pt-1">
+            {form.id && (
+              <Button
+                variant="danger"
+                size="md"
+                onClick={handleDeletePlan}
+                disabled={saving}
+              >
+                <Trash2 className="mr-1.5 h-4 w-4" />
+                Xoá gói
               </Button>
-              <Button variant="outline" size="sm" disabled>
-                Sau
-                <ChevronRight className="h-3.5 w-3.5" />
+            )}
+            <div className="ml-auto flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={() => setFormOpen(false)}
+                disabled={saving}
+              >
+                Huỷ
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleSavePlan}
+                disabled={saving}
+              >
+                {saving ? (
+                  <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="mr-1.5 h-4 w-4" />
+                )}
+                {form.id ? 'Lưu thay đổi' : 'Tạo gói'}
               </Button>
             </div>
           </div>
         </div>
-      </motion.div>
+      </Modal>
+
+      {/* Modal người đăng ký */}
+      <SubscribersModal
+        open={subsOpen}
+        plan={subsPlan}
+        onClose={() => setSubsOpen(false)}
+      />
     </div>
+  );
+}
+
+interface SubRow {
+  id?: string;
+  status?: string;
+  createdAt?: string;
+  // Backend populate owner name/email vào object lồng nhau (hoặc string id nếu user đã xoá).
+  owner?: { id?: string; name?: string; email?: string } | string | null;
+}
+
+function SubscribersModal({
+  open,
+  plan,
+  onClose,
+}: {
+  open: boolean;
+  plan: ApiPlan | null;
+  onClose: () => void;
+}) {
+  const [rows, setRows] = useState<SubRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!open || !plan) return;
+    let active = true;
+    setLoading(true);
+    setError(null);
+    setRows([]);
+    api
+      .planSubscribers(plan.id)
+      .then((res) => {
+        if (active) setRows(((res?.items ?? []) as SubRow[]) ?? []);
+      })
+      .catch((e: unknown) => {
+        if (active)
+          setError(e instanceof Error ? e.message : 'Không tải được danh sách.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, plan]);
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={plan ? `Người đăng ký · ${plan.name}` : 'Người đăng ký'}
+    >
+      {loading ? (
+        <div className="grid place-items-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-indigo-500" />
+        </div>
+      ) : error ? (
+        <p className="py-8 text-center text-sm font-medium text-rose-600">
+          {error}
+        </p>
+      ) : rows.length === 0 ? (
+        <p className="py-8 text-center text-sm text-slate-400">
+          Chưa có người đăng ký nào cho gói này.
+        </p>
+      ) : (
+        <ul className="max-h-80 space-y-2 overflow-y-auto">
+          {rows.map((r, i) => {
+            const owner = r.owner && typeof r.owner === 'object' ? r.owner : null;
+            const email = owner?.email;
+            const name = owner?.name ?? email ?? '—';
+            return (
+              <li
+                key={r.id ?? i}
+                className="flex items-center gap-3 rounded-2xl border border-slate-100 px-4 py-2.5"
+              >
+                <Avatar
+                  initials={initialsOf(name)}
+                  tone={toneOf(email ?? name)}
+                  size="sm"
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-slate-800">
+                    {name}
+                  </p>
+                  {email && (
+                    <p className="truncate text-xs text-slate-400">{email}</p>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Modal>
   );
 }

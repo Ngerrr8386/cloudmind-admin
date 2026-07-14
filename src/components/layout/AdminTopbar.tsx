@@ -1,9 +1,9 @@
-import { Search, Bell, Menu, ChevronDown } from 'lucide-react'
+import { Search, Menu, LogOut } from 'lucide-react'
 import { Avatar } from '@/components/ui'
 import { useAuth } from '@/lib/auth'
 
 export function AdminTopbar({ onMenu }: { onMenu?: () => void }) {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-3 border-b border-slate-200 bg-surface-0/85 px-4 backdrop-blur-xl md:px-6">
       <button onClick={onMenu} className="grid h-10 w-10 place-items-center rounded-xl text-slate-500 hover:bg-slate-100 lg:hidden ring-focus">
@@ -22,13 +22,14 @@ export function AdminTopbar({ onMenu }: { onMenu?: () => void }) {
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
           Production
         </span>
-        <button className="relative grid h-11 w-11 place-items-center rounded-2xl text-slate-500 hover:bg-slate-100 ring-focus">
-          <Bell className="h-5 w-5" />
-          <span className="absolute right-2.5 top-2.5 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-surface-0" />
-        </button>
-        <button className="flex items-center gap-2 rounded-2xl py-1 pl-1 pr-2 hover:bg-slate-100 ring-focus">
+        <button
+          onClick={logout}
+          aria-label="Đăng xuất"
+          title="Đăng xuất"
+          className="flex items-center gap-2 rounded-2xl py-1 pl-1 pr-2 hover:bg-slate-100 ring-focus"
+        >
           <Avatar initials={user?.initials ?? 'A'} tone={user?.tone ?? 'indigo'} size="sm" />
-          <ChevronDown className="hidden h-4 w-4 text-slate-400 sm:block" />
+          <LogOut className="hidden h-4 w-4 text-slate-400 sm:block" />
         </button>
       </div>
     </header>

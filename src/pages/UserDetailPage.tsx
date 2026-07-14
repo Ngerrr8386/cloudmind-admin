@@ -12,22 +12,11 @@ import {
   Files,
   Sparkles,
   CreditCard,
-  Upload,
-  FileText,
-  Brain,
-  Trash2,
-  Settings2,
-  Monitor,
-  Smartphone,
-  Laptop,
-  MapPin,
   Mail,
   Globe,
   Calendar,
   Activity,
   IdCard,
-  ChevronLeft,
-  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -39,109 +28,12 @@ import {
 import { PageHeader } from '@/components/shared/PageHeader';
 import { StatCard } from '@/components/shared/StatCard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { tone } from '@/lib/theme';
-import { cn, formatBytes, formatNumber, timeAgo } from '@/lib/utils';
+import { formatBytes, formatNumber, timeAgo } from '@/lib/utils';
 import { staggerContainer, fadeUp, fadeUpLg, softSpring } from '@/lib/motion';
 import { api } from '@/lib/api';
 import { useAsync } from '@/lib/useApi';
 import { initialsOf, toneOf } from '@/lib/adminMap';
 import type { ManagedUser, Transaction, PlanName } from '@/lib/types';
-
-interface ActivityEntry {
-  id: string;
-  icon: LucideIcon;
-  tone: Parameters<typeof tone>[0];
-  title: string;
-  detail: string;
-  date: string;
-}
-
-interface SessionEntry {
-  id: string;
-  icon: LucideIcon;
-  device: string;
-  location: string;
-  ip: string;
-  time: string;
-  current: boolean;
-}
-
-function buildActivity(userName: string): ActivityEntry[] {
-  return [
-    {
-      id: 'a1',
-      icon: Upload,
-      tone: 'indigo',
-      title: 'Tải lên tài liệu mới',
-      detail: 'bao-cao-quy-2.pdf · 4,2 MB',
-      date: '2026-06-28T09:12:00',
-    },
-    {
-      id: 'a2',
-      icon: Brain,
-      tone: 'violet',
-      title: 'Sử dụng AI tóm tắt văn bản',
-      detail: 'Tóm tắt 18 trang trong 3 giây',
-      date: '2026-06-27T16:40:00',
-    },
-    {
-      id: 'a3',
-      icon: FileText,
-      tone: 'blue',
-      title: 'Chia sẻ thư mục',
-      detail: 'Chia sẻ "Dự án CloudMind" với 3 thành viên',
-      date: '2026-06-26T11:05:00',
-    },
-    {
-      id: 'a4',
-      icon: Settings2,
-      tone: 'amber',
-      title: 'Cập nhật cài đặt bảo mật',
-      detail: 'Bật xác thực hai lớp (2FA)',
-      date: '2026-06-24T08:30:00',
-    },
-    {
-      id: 'a5',
-      icon: Trash2,
-      tone: 'rose',
-      title: 'Xóa tệp',
-      detail: `${userName} đã chuyển 5 tệp vào thùng rác`,
-      date: '2026-06-22T19:48:00',
-    },
-  ];
-}
-
-function buildSessions(): SessionEntry[] {
-  return [
-    {
-      id: 's1',
-      icon: Laptop,
-      device: 'MacBook Pro · Chrome 126',
-      location: 'Hà Nội, Việt Nam',
-      ip: '113.161.42.18',
-      time: '2026-06-28T09:05:00',
-      current: true,
-    },
-    {
-      id: 's2',
-      icon: Smartphone,
-      device: 'iPhone 15 · Ứng dụng CloudMind',
-      location: 'Hồ Chí Minh, Việt Nam',
-      ip: '14.231.118.7',
-      time: '2026-06-27T21:30:00',
-      current: false,
-    },
-    {
-      id: 's3',
-      icon: Monitor,
-      device: 'Windows 11 · Edge 125',
-      location: 'Đà Nẵng, Việt Nam',
-      ip: '171.244.90.33',
-      time: '2026-06-25T14:12:00',
-      current: false,
-    },
-  ];
-}
 
 /** Map raw user từ API → ManagedUser dùng cho render. */
 function mapUser(raw: any): ManagedUser {
@@ -255,9 +147,6 @@ export function UserDetailPage() {
     month: '2-digit',
     year: 'numeric',
   });
-
-  const activity = buildActivity(user.name);
-  const sessions = buildSessions();
 
   const billingRows: Transaction[] = ((txData as any[]) ?? []).map(mapTransaction);
 
@@ -411,39 +300,6 @@ export function UserDetailPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* LEFT */}
         <div className="space-y-6 lg:col-span-2">
-          {/* Activity timeline */}
-          <motion.div variants={fadeUp} initial="hidden" animate="show">
-            <GlassCard className="p-6">
-              <div className="mb-5 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">Hoạt động gần đây</h3>
-                <Badge tone="neutral">{activity.length} mục</Badge>
-              </div>
-              <ol className="relative space-y-5 border-l border-slate-200 pl-6">
-                {activity.map((entry) => {
-                  const et = tone(entry.tone);
-                  const Icon = entry.icon;
-                  return (
-                    <li key={entry.id} className="relative">
-                      <span
-                        className={cn(
-                          'absolute -left-[2.1rem] grid h-7 w-7 place-items-center rounded-full ring-4 ring-white',
-                          et.soft,
-                        )}
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                      </span>
-                      <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:justify-between">
-                        <p className="text-sm font-medium text-slate-800">{entry.title}</p>
-                        <span className="text-xs text-slate-400">{timeAgo(entry.date)}</span>
-                      </div>
-                      <p className="text-sm text-slate-500">{entry.detail}</p>
-                    </li>
-                  );
-                })}
-              </ol>
-            </GlassCard>
-          </motion.div>
-
           {/* Billing history */}
           <motion.div variants={fadeUp} initial="hidden" animate="show">
             <div className="mb-3 flex items-center justify-between">
@@ -495,20 +351,10 @@ export function UserDetailPage() {
                   )}
                 </tbody>
               </table>
-              <div className="flex items-center justify-between border-t border-slate-200 px-5 py-3.5 text-xs text-slate-400">
+              <div className="flex items-center border-t border-slate-200 px-5 py-3.5 text-xs text-slate-400">
                 <span>
                   Hiển thị 1–{billingRows.length} / tổng {billingRows.length}
                 </span>
-                <div className="flex gap-1.5">
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    <ChevronLeft className="h-3.5 w-3.5" />
-                    Trước
-                  </Button>
-                  <Button variant="ghost" size="sm" className="gap-1">
-                    Sau
-                    <ChevronRight className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
               </div>
             </div>
           </motion.div>
@@ -548,67 +394,6 @@ export function UserDetailPage() {
                   {timeAgo(user.lastActive)}
                 </DetailRow>
               </div>
-            </GlassCard>
-          </motion.div>
-
-          {/* Sessions */}
-          <motion.div
-            variants={fadeUp}
-            initial="hidden"
-            animate="show"
-            transition={softSpring}
-          >
-            <GlassCard className="p-6">
-              <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">Phiên đăng nhập</h3>
-                <Badge tone="neutral">{sessions.length}</Badge>
-              </div>
-              <ul className="space-y-3">
-                {sessions.map((s) => {
-                  const Icon = s.icon;
-                  return (
-                    <li
-                      key={s.id}
-                      className={cn(
-                        'rounded-2xl border p-3.5 transition-colors',
-                        s.current
-                          ? 'border-indigo-200 bg-indigo-50/50'
-                          : 'border-slate-200 hover:bg-slate-50',
-                      )}
-                    >
-                      <div className="flex items-start gap-3">
-                        <span
-                          className={cn(
-                            'grid h-9 w-9 shrink-0 place-items-center rounded-xl',
-                            s.current
-                              ? tone('indigo').solid
-                              : 'bg-slate-100 text-slate-500',
-                          )}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0 flex-1 space-y-1">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <p className="text-sm font-medium text-slate-800">{s.device}</p>
-                            {s.current && <Badge tone="mint" dot>Hiện tại</Badge>}
-                          </div>
-                          <p className="flex items-center gap-1 text-xs text-slate-500">
-                            <MapPin className="h-3 w-3" />
-                            {s.location}
-                          </p>
-                          <p className="flex items-center justify-between text-xs text-slate-400">
-                            <span className="font-mono">{s.ip}</span>
-                            <span>{timeAgo(s.time)}</span>
-                          </p>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-              <Button variant="outline" size="sm" className="mt-4 w-full">
-                Đăng xuất tất cả phiên
-              </Button>
             </GlassCard>
           </motion.div>
         </div>

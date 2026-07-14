@@ -1,7 +1,7 @@
 import { useState, type FormEvent, type ChangeEvent } from 'react';
 import { useAuth } from '@/lib/auth';
 import { ApiError } from '@/lib/api';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Lock, Shield, ShieldCheck, KeyRound, Mail, ServerCog, ArrowRight, Activity } from 'lucide-react';
 import {
@@ -64,6 +64,10 @@ export function AdminLoginPage() {
     const next = e.target.value.replace(/\D/g, '').slice(0, 6);
     setTwoFactor(next);
   };
+
+  if (!auth.loading && auth.user) {
+    return <Navigate to="/" replace />;
+  }
 
   const indigo = tone('indigo');
   const emerald = tone('emerald');
