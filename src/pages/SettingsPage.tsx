@@ -700,7 +700,6 @@ const PASSWORD_POLICY = [
 ];
 
 function SecurityTab({ security }: { security: AdminSettings['security'] }) {
-  const [force2fa, setForce2fa] = useState(security.enforce2fa);
   const [sessionTimeout, setSessionTimeout] = useState(
     String(security.sessionTimeoutMins ?? ''),
   );
@@ -716,7 +715,6 @@ function SecurityTab({ security }: { security: AdminSettings['security'] }) {
     setSaving(true);
     try {
       await api.updateSecurity({
-        enforce2fa: force2fa,
         sessionTimeoutMins: Number(sessionTimeout) || 0,
         ipAllowlist: ipRestrict
           ? allowlist
@@ -741,14 +739,6 @@ function SecurityTab({ security }: { security: AdminSettings['security'] }) {
         toneKey="emerald"
       >
         <div className="space-y-3">
-          <ToggleRow
-            title="Bắt buộc 2FA cho quản trị viên"
-            description="Yêu cầu xác thực hai lớp khi đăng nhập."
-            checked={force2fa}
-            onChange={setForce2fa}
-            toneKey="emerald"
-            icon={ShieldCheck}
-          />
           <div className="max-w-xs pt-1">
             <FieldLabel
               label="Thời gian hết phiên"

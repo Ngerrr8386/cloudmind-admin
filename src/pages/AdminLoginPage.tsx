@@ -10,7 +10,6 @@ import {
   Input,
   Toggle,
   Button,
-  Badge,
 } from '@/components/ui';
 import { AnimatedBackground } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -42,7 +41,6 @@ export function AdminLoginPage() {
 
   const [email, setEmail] = useState('admin@cloudmind.vn');
   const [password, setPassword] = useState('');
-  const [twoFactor, setTwoFactor] = useState('');
   const [remember, setRemember] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -58,11 +56,6 @@ export function AdminLoginPage() {
       setError(err instanceof ApiError ? err.message : 'Đăng nhập thất bại, thử lại nhé');
       setSubmitting(false);
     }
-  };
-
-  const handleTwoFactor = (e: ChangeEvent<HTMLInputElement>) => {
-    const next = e.target.value.replace(/\D/g, '').slice(0, 6);
-    setTwoFactor(next);
   };
 
   if (!auth.loading && auth.user) {
@@ -154,27 +147,6 @@ export function AdminLoginPage() {
                 />
               </motion.div>
 
-              <motion.div variants={fadeUp}>
-                <div className="mb-1.5 flex items-center justify-between">
-                  <FieldLabel icon={Shield}>Mã xác thực 2 lớp</FieldLabel>
-                  <Badge tone="neutral" className="text-[10px]">
-                    6 số
-                  </Badge>
-                </div>
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={twoFactor}
-                  onChange={handleTwoFactor}
-                  placeholder="000000"
-                  autoComplete="one-time-code"
-                  className="tracking-[0.5em] font-mono"
-                />
-                <p className="mt-1.5 text-[11px] text-slate-400">
-                  Nhập mã từ ứng dụng xác thực (Authenticator) của bạn.
-                </p>
-              </motion.div>
-
               {/* Remember device */}
               <motion.div
                 variants={fadeUp}
@@ -185,7 +157,7 @@ export function AdminLoginPage() {
                     Ghi nhớ thiết bị 30 ngày
                   </span>
                   <span className="text-[11px] text-slate-400">
-                    Bỏ qua 2FA trên thiết bị tin cậy này.
+                    Duy trì đăng nhập trên thiết bị tin cậy này.
                   </span>
                 </div>
                 <Toggle checked={remember} onChange={setRemember} />
